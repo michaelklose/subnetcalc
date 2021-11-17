@@ -6,7 +6,7 @@ import socket
 import sys
 
 if len(sys.argv) == 1:
-    # print("Usage: subnetcalc [Address{/{Netmask|Prefix}}] {Netmask|Prefix} {-n} {-uniquelocal|-uniquelocalhq} {-nocolour|-nocolor}")
+    # print("Usage: subnetcalc.py [Address{/{Netmask|Prefix}}] {Netmask|Prefix} {-n} {-uniquelocal|-uniquelocalhq} {-nocolour|-nocolor}")
     print("Usage: subnetcalc.py [Address{/{Netmask|Prefix}}]")
     sys.exit(1)
 
@@ -19,17 +19,21 @@ else:
     if address.network.prefixlen == 32 or address.network.prefixlen == 128:
         max_hosts = 1
         host_range = "{ " + str(address.network[0]) + " - " + str(address.network[0]) + " }"
+        broadcast = "not needed on Point-to-Point links"
     elif address.network.prefixlen == 31 or address.network.prefixlen == 127:
         max_hosts = 2
         host_range = "{ " + str(address.network[0]) + " - " + str(address.network[1]) + " }"
+        broadcast = "not needed on Point-to-Point links"
     else:
         max_hosts = address.network.num_addresses - 2
         host_range = "{ " + str(address.network[1]) + " - " + str(address.network[-2]) + " }"
+        broadcast = address.network.broadcast_address
 
     print("Address       =", address.ip)
     print("Network       =", str(address.network).replace("/", " / "))
     print("Netmask       =", address.netmask)
-    print("Broadcast     =", address.network.broadcast_address)
+    if address.version == 4:
+        print("Broadcast     =", broadcast)
     print("Wildcard Mask =", address.hostmask)
     print("Hosts Bits    =", (address.network.max_prefixlen - address.network.prefixlen))
     print("Max. Hosts    =", max_hosts)
