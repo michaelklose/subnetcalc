@@ -8,5 +8,5 @@ subnetcalc.py 10.1.1.1
 subnetcalc.py 10.1.1.1/24  
 subnetcalc.py 10.1.1.1/255.255.255.0  
 
-Build binary:
+Build binary:  
 pyinstaller subnetcalc.py --onefile
