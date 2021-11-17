@@ -1,6 +1,6 @@
 # subnetcalc
 
-Rewrite of [dreibh/subnetcalc](https://github.com/dreibh/subnetcalc) in python
+Rewrite of [dreibh/subnetcalc](https://github.com/dreibh/subnetcalc) in Python
 
 Usage examples:  
 subnetcalc.py [Address{/{Netmask|Prefix}}]  
