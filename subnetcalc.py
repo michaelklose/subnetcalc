@@ -21,7 +21,7 @@ else:
         host_range = "{ " + str(address.network[0]) + " - " + str(address.network[0]) + " }"
         broadcast = "not needed on Point-to-Point links"
     elif address.network.prefixlen == 31 or address.network.prefixlen == 127:
-        max_hosts_deduct = 0 
+        max_hosts_deduct = 0
         host_range = "{ " + str(address.network[0]) + " - " + str(address.network[1]) + " }"
         broadcast = "not needed on Point-to-Point links"
     else:
@@ -44,6 +44,17 @@ else:
     print("Host Range    =", host_range)
     print("Properties    =")
     if address.version == 4:
+        # Check IPv4 properties
+        # print(address)
+        # print(address.network)
+        if str(address) == str(address.network):
+            print("   -", address.ip, "is a NETWORK address")
+        elif str(address.ip) == str(broadcast):
+            print("   -", address.ip, "is the BROADCAST address of", address.network)
+        else:
+            print("   -", address.ip, "is a HOST address of", address.network)
+
+        # Get subnet class
         address_splited = re.split(r"\b(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\/(\d+)\b", str(address))
         first_octet = int(address_splited[1])
         if first_octet >= 1 and first_octet <= 127:
@@ -56,6 +67,8 @@ else:
             print("   - Class D (Multicast)")
         elif first_octet >= 240 and first_octet <= 255:
             print("   - Class E (Reserved)")
+
+        # Check if subnet is a private subnet
         if address.is_private:
             print("   - Private")
     if address.is_loopback:
