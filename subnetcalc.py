@@ -17,15 +17,18 @@ except ValueError:
     sys.exit(1)
 else:
     if address.network.prefixlen == 32 or address.network.prefixlen == 128:
-        max_hosts = 1
+        max_hosts_deduct = 0
         host_range = "{ " + str(address.network[0]) + " - " + str(address.network[0]) + " }"
         broadcast = "not needed on Point-to-Point links"
     elif address.network.prefixlen == 31 or address.network.prefixlen == 127:
-        max_hosts = 2
+        max_hosts_deduct = 0 
         host_range = "{ " + str(address.network[0]) + " - " + str(address.network[1]) + " }"
         broadcast = "not needed on Point-to-Point links"
     else:
-        max_hosts = address.network.num_addresses - 2
+        if address.version == 4:
+            max_hosts_deduct = 2
+        else:
+            max_hosts_deduct = 1
         host_range = "{ " + str(address.network[1]) + " - " + str(address.network[-2]) + " }"
         broadcast = address.network.broadcast_address
 
@@ -35,8 +38,9 @@ else:
     if address.version == 4:
         print("Broadcast     =", broadcast)
     print("Wildcard Mask =", address.hostmask)
-    print("Hosts Bits    =", (address.network.max_prefixlen - address.network.prefixlen))
-    print("Max. Hosts    =", max_hosts)
+    host_bits = (address.network.max_prefixlen - address.network.prefixlen)
+    print("Host Bits     =", host_bits)
+    print("Max. Hosts    =", (address.network.num_addresses - max_hosts_deduct), "  (2^" + str(host_bits) + " - " + str(max_hosts_deduct) + ")")
     print("Host Range    =", host_range)
     print("Properties    =")
     if address.version == 4:
