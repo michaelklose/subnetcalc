@@ -116,7 +116,7 @@ else:
             print("   -", address.ip, "is a HOST address of", address.network)
 
         # Get subnet class
-        first_octet = int(address_split[1])
+        first_octet = int(address_split[0])
         if first_octet >= 1 and first_octet <= 127:
             print("   - Class A")
         elif first_octet >= 128 and first_octet <= 191:
