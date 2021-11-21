@@ -106,15 +106,15 @@ else:
     print("Max. Hosts    =", (address.network.num_addresses - max_hosts_deduct), "  (2^" + str(host_bits) + " - " + str(max_hosts_deduct) + ")")
     print("Host Range    =", host_range)
     print("Properties    =")
+    if str(address) == str(address.network):
+        print("   -", address.ip, "is a NETWORK address")
+    elif str(address.ip) == str(broadcast):
+        print("   -", address.ip, "is the BROADCAST address of", address.network)
+    else:
+        print("   -", address.ip, "is a HOST address of", address.network)
+
     if address.version == 4:
         # Check IPv4 properties
-        if str(address) == str(address.network):
-            print("   -", address.ip, "is a NETWORK address")
-        elif str(address.ip) == str(broadcast):
-            print("   -", address.ip, "is the BROADCAST address of", address.network)
-        else:
-            print("   -", address.ip, "is a HOST address of", address.network)
-
         # Get subnet class
         first_octet = int(address_split[0])
         if first_octet >= 1 and first_octet <= 127:
@@ -127,10 +127,22 @@ else:
             print("   - Class D (Multicast)")
         elif first_octet >= 240 and first_octet <= 255:
             print("   - Class E (Reserved)")
-
         # Check if subnet is a private subnet
         if address.is_private:
             print("   - Private")
+    else:
+        if address.is_site_local:
+            print("   - Site-Local Unicast Properties:")
+        elif address.is_reserved:
+            print("   - Reserved Unicast Properties:")
+        elif address.is_link_local:
+            print("   - Link-Local Unicast Properties:")
+        elif address.is_private:
+            print("   - Private Unicast Properties:")
+        elif address.is_global:
+            print("   - Global Unicast Properties:")
+        print("      + Interface ID =", str(address.ip.exploded)[-19:])
+        print("      + Sol. Node MC = ff02::1:ff" + str(address.ip.exploded)[-7:])
     if address.is_loopback:
         print("   - Loopback address")
     try:
