@@ -117,15 +117,15 @@ else:
         # Check IPv4 properties
         # Get subnet class
         first_octet = int(address_split[0])
-        if first_octet >= 1 and first_octet <= 127:
+        if 1 <= first_octet <= 127:
             print("   - Class A")
-        elif first_octet >= 128 and first_octet <= 191:
+        elif 128 <= first_octet <= 191:
             print("   - Class B")
-        elif first_octet >= 192 and first_octet <= 223:
+        elif 192 <= first_octet <= 223:
             print("   - Class C")
-        elif first_octet >= 224 and first_octet <= 239:
+        elif 224 <= first_octet <= 239:
             print("   - Class D (Multicast)")
-        elif first_octet >= 240 and first_octet <= 255:
+        elif 240 <= first_octet <= 255:
             print("   - Class E (Reserved)")
         # Check if subnet is a private subnet
         if address.is_private:
