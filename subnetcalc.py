@@ -23,18 +23,21 @@ except ValueError:
 else:
     if address.network.prefixlen in (32, 128):
         MAX_HOSTS_DEDUCT = 0
-        HOST_RANGE = "{ " + str(address.network[0]) + " - " + str(address.network[0]) + " }"
+        HOST_RANGE = "{ " + \
+            str(address.network[0]) + " - " + str(address.network[0]) + " }"
         BROADCAST = "not needed on Point-to-Point links"
     elif address.network.prefixlen in (31, 127):
         MAX_HOSTS_DEDUCT = 0
-        HOST_RANGE = "{ " + str(address.network[0]) + " - " + str(address.network[1]) + " }"
+        HOST_RANGE = "{ " + \
+            str(address.network[0]) + " - " + str(address.network[1]) + " }"
         BROADCAST = "not needed on Point-to-Point links"
     else:
         if address.version == 4:
             MAX_HOSTS_DEDUCT = 2
         else:
             MAX_HOSTS_DEDUCT = 1
-        HOST_RANGE = "{ " + str(address.network[1]) + " - " + str(address.network[-2]) + " }"
+        HOST_RANGE = "{ " + str(address.network[1]) + \
+            " - " + str(address.network[-2]) + " }"
         BROADCAST = address.network.broadcast_address
 
     host_bits = (address.network.max_prefixlen - address.network.prefixlen)
@@ -44,7 +47,8 @@ else:
     if address.version == 4:
         address_split = str(address.ip).split(".")
         if COLOR == 1:
-            IP2BIN = "".join(map(str, [f"{int(x):08b}" for x in address_split]))
+            IP2BIN = "".join(
+                map(str, [f"{int(x):08b}" for x in address_split]))
             split = regex.split(MY_REGEX, IP2BIN)
             net_split = regex.split(r"(\d{8})", split[0])
             while "" in net_split:
@@ -59,12 +63,14 @@ else:
             HOST = " . ".join(host_split)
             print(f"                   {NET}[yellow]{HOST}")
         else:
-            IP2BIN = " . ".join(map(str, [f"{int(x):08b}" for x in address_split]))
+            IP2BIN = " . ".join(
+                map(str, [f"{int(x):08b}" for x in address_split]))
             print("                  ", IP2BIN)
     else:
         address_split = str(address.ip.exploded).split(":")
         if COLOR == 1:
-            IP2BIN = "".join(map(str, [(bin(int(x, 16))[2:].zfill(16)) for x in address_split]))
+            IP2BIN = "".join(
+                map(str, [(bin(int(x, 16))[2:].zfill(16)) for x in address_split]))
             COUNT_A = 1
             ipv6_dict = {}
             for a in IP2BIN:
@@ -103,7 +109,8 @@ else:
         print(f"Host Bits     = [yellow]{host_bits}")
     else:
         print("Host Bits     =", host_bits)
-    print("Max. Hosts    =", (address.network.num_addresses - MAX_HOSTS_DEDUCT), "  (2^" + str(host_bits) + " - " + str(MAX_HOSTS_DEDUCT) + ")")
+    print("Max. Hosts    =", (address.network.num_addresses - MAX_HOSTS_DEDUCT),
+          "  (2^" + str(host_bits) + " - " + str(MAX_HOSTS_DEDUCT) + ")")
     print("Host Range    =", HOST_RANGE)
     print("Properties    =")
     if str(address) == str(address.network):
@@ -142,7 +149,8 @@ else:
         elif address.is_global:
             print("   - Global Unicast Properties:")
         print("      + Interface ID =", str(address.ip.exploded)[-19:])
-        print("      + Sol. Node MC = ff02::1:ff" + str(address.ip.exploded)[-7:])
+        print("      + Sol. Node MC = ff02::1:ff" +
+              str(address.ip.exploded)[-7:])
     if address.is_loopback:
         print("   - Loopback address")
     try:
