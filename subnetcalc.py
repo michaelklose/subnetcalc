@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
 import ipaddress
-import regex
 import socket
 import sys
+import regex
 
-color = 1
+COLOR = 1
 
-if color == 1:
+if COLOR == 1:
     from rich import print
 
 if len(sys.argv) == 1:
@@ -21,75 +21,75 @@ except ValueError:
     print("ERROR: Bad address " + sys.argv[1] + "!")
     sys.exit(1)
 else:
-    if address.network.prefixlen == 32 or address.network.prefixlen == 128:
-        max_hosts_deduct = 0
-        host_range = "{ " + str(address.network[0]) + " - " + str(address.network[0]) + " }"
-        broadcast = "not needed on Point-to-Point links"
-    elif address.network.prefixlen == 31 or address.network.prefixlen == 127:
-        max_hosts_deduct = 0
-        host_range = "{ " + str(address.network[0]) + " - " + str(address.network[1]) + " }"
-        broadcast = "not needed on Point-to-Point links"
+    if address.network.prefixlen in (32, 128):
+        MAX_HOSTS_DEDUCT = 0
+        HOST_RANGE = "{ " + str(address.network[0]) + " - " + str(address.network[0]) + " }"
+        BROADCAST = "not needed on Point-to-Point links"
+    elif address.network.prefixlen in (31, 127):
+        MAX_HOSTS_DEDUCT = 0
+        HOST_RANGE = "{ " + str(address.network[0]) + " - " + str(address.network[1]) + " }"
+        BROADCAST = "not needed on Point-to-Point links"
     else:
         if address.version == 4:
-            max_hosts_deduct = 2
+            MAX_HOSTS_DEDUCT = 2
         else:
-            max_hosts_deduct = 1
-        host_range = "{ " + str(address.network[1]) + " - " + str(address.network[-2]) + " }"
-        broadcast = address.network.broadcast_address
+            MAX_HOSTS_DEDUCT = 1
+        HOST_RANGE = "{ " + str(address.network[1]) + " - " + str(address.network[-2]) + " }"
+        BROADCAST = address.network.broadcast_address
 
     host_bits = (address.network.max_prefixlen - address.network.prefixlen)
-    my_regex = r"(\d{" + str(host_bits) + r"})$"
+    MY_REGEX = r"(\d{" + str(host_bits) + r"})$"
 
     print("Address       =", address.ip)
     if address.version == 4:
         address_split = str(address.ip).split(".")
-        if color == 1:
-            ip2bin = "".join(map(str, ["{0:08b}".format(int(x)) for x in address_split]))
-            split = regex.split(my_regex, ip2bin)
+        if COLOR == 1:
+            IP2BIN = "".join(map(str, [f"{int(x):08b}" for x in address_split]))
+            split = regex.split(MY_REGEX, IP2BIN)
             net_split = regex.split(r"(\d{8})", split[0])
-            while("" in net_split):
+            while "" in net_split:
                 net_split.remove("")
             host_split = regex.split(r"(?r)(\d{8})", split[1])
-            while("" in host_split):
+            while "" in host_split:
                 host_split.remove("")
             host_split.reverse()
-            net = " . ".join(net_split)
-            if host_bits == 8 or host_bits == 16 or host_bits == 24:
-                net = net + " . "
-            host = " . ".join(host_split)
-            print(f"                   {net}[yellow]{host}")
+            NET = " . ".join(net_split)
+            if host_bits in (8, 16, 24):
+                NET = NET + " . "
+            HOST = " . ".join(host_split)
+            print(f"                   {NET}[yellow]{HOST}")
         else:
-            ip2bin = " . ".join(map(str, ["{0:08b}".format(int(x)) for x in address_split]))
-            print("                  ", ip2bin)
+            IP2BIN = " . ".join(map(str, [f"{int(x):08b}" for x in address_split]))
+            print("                  ", IP2BIN)
     else:
         address_split = str(address.ip.exploded).split(":")
-        if color == 1:
-            ip2bin = "".join(map(str, [(bin(int(x, 16))[2:].zfill(16)) for x in address_split]))
-            count_a = 1
+        if COLOR == 1:
+            IP2BIN = "".join(map(str, [(bin(int(x, 16))[2:].zfill(16)) for x in address_split]))
+            COUNT_A = 1
             ipv6_dict = {}
-            for a in ip2bin:
-                if 128 - count_a < host_bits:
-                    ipv6_dict[count_a] = {"value": a, "type": "host"}
+            for a in IP2BIN:
+                if 128 - COUNT_A < host_bits:
+                    ipv6_dict[COUNT_A] = {"value": a, "type": "host"}
                 else:
-                    ipv6_dict[count_a] = {"value": a, "type": "net"}
-                count_a += 1
-            count_x = 0
+                    ipv6_dict[COUNT_A] = {"value": a, "type": "net"}
+                COUNT_A += 1
+            COUNT_X = 0
             for x in address_split:
-                start = 1 + count_x * 16
-                end = 17 + count_x * 16
-                binary = ""
-                count_y = 1
-                for y in range(start, end):
+                START = 1 + COUNT_X * 16
+                END = 17 + COUNT_X * 16
+                BINARY = ""
+                COUNT_Y = 1
+                for y in range(START, END):
                     # print(y)
                     if ipv6_dict[y]['type'] == "host":
-                        binary += "[yellow]" + ipv6_dict[y]['value']
+                        BINARY += "[yellow]" + ipv6_dict[y]['value']
                     else:
-                        binary += ipv6_dict[y]['value']
-                    if count_y == 8:
-                        binary += " "
-                    count_y += 1
-                print(f"                   [cyan bold]{x} =", binary)
-                count_x += 1
+                        BINARY += ipv6_dict[y]['value']
+                    if COUNT_Y == 8:
+                        BINARY += " "
+                    COUNT_Y += 1
+                print(f"                   [cyan bold]{x} =", BINARY)
+                COUNT_X += 1
         else:
             for x in address_split:
                 y = (str(bin(int(x, 16)))[2:].zfill(16))
@@ -97,18 +97,18 @@ else:
     print("Network       =", str(address.network).replace("/", " / "))
     print("Netmask       =", address.netmask)
     if address.version == 4:
-        print("Broadcast     =", broadcast)
+        print("Broadcast     =", BROADCAST)
     print("Wildcard Mask =", address.hostmask)
-    if color == 1:
+    if COLOR == 1:
         print(f"Host Bits     = [yellow]{host_bits}")
     else:
         print("Host Bits     =", host_bits)
-    print("Max. Hosts    =", (address.network.num_addresses - max_hosts_deduct), "  (2^" + str(host_bits) + " - " + str(max_hosts_deduct) + ")")
-    print("Host Range    =", host_range)
+    print("Max. Hosts    =", (address.network.num_addresses - MAX_HOSTS_DEDUCT), "  (2^" + str(host_bits) + " - " + str(MAX_HOSTS_DEDUCT) + ")")
+    print("Host Range    =", HOST_RANGE)
     print("Properties    =")
     if str(address) == str(address.network):
         print("   -", address.ip, "is a NETWORK address")
-    elif str(address.ip) == str(broadcast):
+    elif str(address.ip) == str(BROADCAST):
         print("   -", address.ip, "is the BROADCAST address of", address.network)
     else:
         print("   -", address.ip, "is a HOST address of", address.network)
