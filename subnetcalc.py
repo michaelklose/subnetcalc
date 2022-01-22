@@ -118,7 +118,7 @@ else:
     elif str(address.ip) == str(BROADCAST):
         print("   -", address.ip, "is the BROADCAST address of", address.network)
     else:
-        print("   -", address.ip, "is a HOST address of", address.network)
+        print("   -", address.ip, "is a HOST address in", address.network)
 
     if address.version == 4:
         # Check IPv4 properties
