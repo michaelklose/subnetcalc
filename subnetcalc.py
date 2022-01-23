@@ -1,24 +1,48 @@
 #!/usr/bin/env python3
 
+import argparse
 import ipaddress
 import socket
 import sys
 import regex
 
-COLOR = 1
+# Initialize parser
+parser = argparse.ArgumentParser()
+
+# Prefix
+parser.add_argument("prefix", nargs='+',
+                    help="[Address{/{Netmask|Prefix}}] {Netmask|Prefix}")
+
+# No color option
+parser.add_argument("-nocolor", "-nocolour",
+                    action='store_true', help="no colors")
+
+# No reverse lookup
+parser.add_argument("-n", action='store_true', help="no reverse lookup")
+
+# Read arguments from command line
+args = parser.parse_args()
+
+if args.nocolor:
+    COLOR = 0
+else:
+    COLOR = 1
 
 if COLOR == 1:
     from rich import print
 
-if len(sys.argv) == 1:
-    # print("Usage: subnetcalc.py [Address{/{Netmask|Prefix}}] {Netmask|Prefix} {-n} {-uniquelocal|-uniquelocalhq} {-nocolour|-nocolor}")
-    print("Usage: subnetcalc.py [Address{/{Netmask|Prefix}}]")
-    sys.exit(1)
+# if len(sys.argv) == 1:
+#     # print("Usage: subnetcalc.py [Address{/{Netmask|Prefix}}] {Netmask|Prefix} {-n} {-uniquelocal|-uniquelocalhq} {-nocolour|-nocolor}")
+#     print("Usage: subnetcalc.py [Address{/{Netmask|Prefix}}]")
+#     sys.exit(1)
+
+if isinstance(args.prefix, list):
+    args.prefix = "/".join(args.prefix)
 
 try:
-    address = ipaddress.ip_interface(sys.argv[1])
+    address = ipaddress.ip_interface(args.prefix)
 except ValueError:
-    print("ERROR: Bad address " + sys.argv[1] + "!")
+    print("ERROR: Bad address " + args.prefix + "!")
     sys.exit(1)
 else:
     if address.network.prefixlen in (32, 128):
@@ -153,8 +177,10 @@ else:
               str(address.ip.exploded)[-7:])
     if address.is_loopback:
         print("   - Loopback address")
-    try:
-        dns = socket.gethostbyaddr(str(address.ip))[0]
-    except (socket.error, socket.herror, socket.gaierror, socket.timeout) as e:
-        dns = "(" + e.strerror + ")"
-    print("DNS Hostname  =", dns)
+
+    if not args.n:
+        try:
+            dns = socket.gethostbyaddr(str(address.ip))[0]
+        except (socket.error, socket.herror, socket.gaierror, socket.timeout) as e:
+            dns = "(" + e.strerror + ")"
+        print("DNS Hostname  =", dns)
