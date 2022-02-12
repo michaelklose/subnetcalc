@@ -7,7 +7,7 @@ import sys
 import regex
 
 # Initialize parser
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(usage='%(prog)s [Address{/{Netmask|Prefix}}] {Netmask|Prefix} {-n} {-nocolour|-nocolor}')
 
 # Prefix
 parser.add_argument("prefix", nargs='+',
