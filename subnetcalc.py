@@ -2,6 +2,7 @@
 
 import argparse
 import ipaddress
+import os
 import socket
 import sys
 import regex
@@ -10,7 +11,7 @@ import regex
 parser = argparse.ArgumentParser(usage='%(prog)s [Address{/{Netmask|Prefix}}] {Netmask|Prefix} {-n} {-nocolour|-nocolor}')
 
 # Prefix
-parser.add_argument("prefix", nargs='+',
+parser.add_argument("prefix", nargs='*',
                     help="[Address{/{Netmask|Prefix}}] {Netmask|Prefix}")
 
 # No color option
@@ -23,6 +24,10 @@ parser.add_argument("-n", action='store_true', help="no reverse lookup")
 # Read arguments from command line
 args = parser.parse_args()
 
+# Print usage when prefix is empty
+if not args.prefix:
+    sys.exit(("usage: " + os.path.basename(__file__) + " [Address{/{Netmask|Prefix}}] {Netmask|Prefix} {-n} {-nocolour|-nocolor}"))
+
 if args.nocolor:
     COLOR = 0
 else:
@@ -30,11 +35,6 @@ else:
 
 if COLOR == 1:
     from rich import print
-
-# if len(sys.argv) == 1:
-#     # print("Usage: subnetcalc.py [Address{/{Netmask|Prefix}}] {Netmask|Prefix} {-n} {-uniquelocal|-uniquelocalhq} {-nocolour|-nocolor}")
-#     print("Usage: subnetcalc.py [Address{/{Netmask|Prefix}}]")
-#     sys.exit(1)
 
 if isinstance(args.prefix, list):
     args.prefix = "/".join(args.prefix)
