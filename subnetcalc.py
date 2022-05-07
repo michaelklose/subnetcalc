@@ -5,6 +5,7 @@ import ipaddress
 import os
 import socket
 import sys
+
 import regex
 
 # Initialize parser
