@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+"""
+IP Subnet Calculator with CLI Coloring
+Author: Michael Klose
+"""
 
 import argparse
 import ipaddress
@@ -6,182 +10,197 @@ import os
 import socket
 import sys
 
-import regex
+from typing import Union, Optional
 
-# Initialize parser
-parser = argparse.ArgumentParser(usage='%(prog)s [Address{/{Netmask|Prefix}}] {Netmask|Prefix} {-n} {-nocolour|-nocolor}')
+# Global printer defaults to built-in print, but may be overridden to rich.print in main()
+printer = print
 
-# Prefix
-parser.add_argument("prefix", nargs='*',
-                    help="[Address{/{Netmask|Prefix}}] {Netmask|Prefix}")
+def parse_args() -> argparse.Namespace:
+    """Parse and return command-line arguments."""
+    usage_str = '%(prog)s [Address{/{Netmask|Prefix}}] {Netmask|Prefix} {-n} {-nocolour|-nocolor}'
+    parser = argparse.ArgumentParser(usage=usage_str)
+    parser.add_argument("prefix", nargs='*',
+                        help="[Address{/{Netmask|Prefix}}] {Netmask|Prefix}")
+    parser.add_argument("-nocolor", "-nocolour", action='store_true',
+                        help="no colors")
+    parser.add_argument("-n", action='store_true',
+                        help="no reverse lookup")
+    args = parser.parse_args()
+    if not args.prefix:
+        sys.exit("usage: " + os.path.basename(__file__) +
+                 " [Address{/{Netmask|Prefix}}] {Netmask|Prefix} {-n} {-nocolour|-nocolor}")
+    # Join prefix arguments into a single string
+    if isinstance(args.prefix, list):
+        args.prefix = "/".join(args.prefix)
+    return args
 
-# No color option
-parser.add_argument("-nocolor", "-nocolour",
-                    action='store_true', help="no colors")
+def split_into_octets(bits: str) -> str:
+    """Split a bit string into octets separated by ' . '."""
+    return " . ".join([bits[i:i+8] for i in range(0, len(bits), 8)]) if bits else ""
 
-# No reverse lookup
-parser.add_argument("-n", action='store_true', help="no reverse lookup")
+def print_ipv4_binary(ip: ipaddress.IPv4Address, prefix: int, color: bool) -> None:
+    """
+    Print IPv4 address and its binary representation.
+    The host bits are highlighted in yellow if color is enabled.
+    """
+    binary_ip = f"{int(ip):032b}"
+    # Split into network and host parts
+    network_bits = binary_ip[:prefix]
+    host_bits_str = binary_ip[prefix:]
+    network_display = split_into_octets(network_bits)
+    host_display = split_into_octets(host_bits_str)
+    if color and host_display:
+        host_display = f"[yellow]{host_display}[/yellow]"
+    # Append separator dot if network part ends on octet boundary and host exists
+    if network_display and host_display and (prefix % 8 == 0):
+        network_display += " . "
+    printer("Address       =", ip)
+    printer("                  ", network_display + host_display)
 
-# Read arguments from command line
-args = parser.parse_args()
+def print_ipv6_binary(ip: ipaddress.IPv6Address, prefix: int, color: bool) -> None:
+    """
+    Print IPv6 address and its binary representation.
+    The host bits are highlighted in yellow if color is enabled.
+    """
+    exploded = ip.exploded
+    hextets = exploded.split(":")
+    printer("Address       =", ip)
+    for i, hextet in enumerate(hextets):
+        start_bit = i * 16
+        hextet_bin = f"{int(hextet, 16):016b}"
+        # Process the hextet in two 8-bit groups
+        # First octet:
+        first_octet = hextet_bin[:8]
+        first_net = max(0, min(8, prefix - start_bit))
+        first_normal = first_octet[:first_net]
+        first_host = first_octet[first_net:]
+        if color and first_host:
+            first_host = f"[yellow]{first_host}[/yellow]"
+        group1 = first_normal + first_host
+        # Second octet:
+        second_octet = hextet_bin[8:]
+        second_net = max(0, min(8, prefix - (start_bit + 8)))
+        second_normal = second_octet[:second_net]
+        second_host = second_octet[second_net:]
+        if color and second_host:
+            second_host = f"[yellow]{second_host}[/yellow]"
+        group2 = second_normal + second_host
+        printer(f"                   [cyan bold]{hextet} = {group1} {group2}")
 
-# Print usage when prefix is empty
-if not args.prefix:
-    sys.exit(("usage: " + os.path.basename(__file__) + " [Address{/{Netmask|Prefix}}] {Netmask|Prefix} {-n} {-nocolour|-nocolor}"))
-
-if args.nocolor:
-    COLOR = 0
-else:
-    COLOR = 1
-
-if COLOR == 1:
-    from rich import print
-
-if isinstance(args.prefix, list):
-    args.prefix = "/".join(args.prefix)
-
-try:
-    address = ipaddress.ip_interface(args.prefix)
-except ValueError:
-    print("ERROR: Bad address " + args.prefix + "!")
-    sys.exit(1)
-else:
-    if address.network.prefixlen in (32, 128):
-        MAX_HOSTS_DEDUCT = 0
-        HOST_RANGE = "{ " + \
-            str(address.network[0]) + " - " + str(address.network[0]) + " }"
-        BROADCAST = "not needed on Point-to-Point links"
-    elif address.network.prefixlen in (31, 127):
-        MAX_HOSTS_DEDUCT = 0
-        HOST_RANGE = "{ " + \
-            str(address.network[0]) + " - " + str(address.network[1]) + " }"
-        BROADCAST = "not needed on Point-to-Point links"
+def print_network_info(interface: Union[ipaddress.IPv4Interface, ipaddress.IPv6Interface],
+                       color: bool,
+                       max_hosts_deduct: int,
+                       host_range: str,
+                       broadcast: Optional[Union[str, ipaddress.IPv4Address]]) -> None:
+    """Print network details such as netmask, wildcard mask, host bits, etc."""
+    printer("Network       =", str(interface.network).replace("/", " / "))
+    printer("Netmask       =", interface.netmask)
+    if interface.version == 4:
+        printer("Broadcast     =", broadcast)
+    printer("Wildcard Mask =", interface.hostmask)
+    host_bits = interface.network.max_prefixlen - interface.network.prefixlen
+    if color:
+        printer(f"Host Bits     = [yellow]{host_bits}[/yellow]")
     else:
-        if address.version == 4:
-            MAX_HOSTS_DEDUCT = 2
-        else:
-            MAX_HOSTS_DEDUCT = 1
-        HOST_RANGE = "{ " + str(address.network[1]) + \
-            " - " + str(address.network[-2]) + " }"
-        BROADCAST = address.network.broadcast_address
+        printer("Host Bits     =", host_bits)
+    max_hosts = interface.network.num_addresses - max_hosts_deduct
+    printer("Max. Hosts    =", max_hosts, f"  (2^{host_bits} - {max_hosts_deduct})")
+    printer("Host Range    =", host_range)
 
-    host_bits = (address.network.max_prefixlen - address.network.prefixlen)
-    MY_REGEX = r"(\d{" + str(host_bits) + r"})$"
-
-    print("Address       =", address.ip)
-    if address.version == 4:
-        address_split = str(address.ip).split(".")
-        if COLOR == 1:
-            IP2BIN = "".join(
-                map(str, [f"{int(x):08b}" for x in address_split]))
-            split = regex.split(MY_REGEX, IP2BIN)
-            net_split = regex.split(r"(\d{8})", split[0])
-            while "" in net_split:
-                net_split.remove("")
-            host_split = regex.split(r"(?r)(\d{8})", split[1])
-            while "" in host_split:
-                host_split.remove("")
-            host_split.reverse()
-            NET = " . ".join(net_split)
-            if host_bits in (8, 16, 24):
-                NET = NET + " . "
-            HOST = " . ".join(host_split)
-            print(f"                   {NET}[yellow]{HOST}")
-        else:
-            IP2BIN = " . ".join(
-                map(str, [f"{int(x):08b}" for x in address_split]))
-            print("                  ", IP2BIN)
+def print_properties(interface: Union[ipaddress.IPv4Interface, ipaddress.IPv6Interface]) -> None:
+    """Print IP address properties and classifications."""
+    printer("Properties    =")
+    if str(interface) == str(interface.network):
+        printer("   -", interface.ip, "is a NETWORK address")
+    elif interface.version == 4 and str(interface.ip) == str(interface.network.broadcast_address):
+        printer("   -", interface.ip, "is the BROADCAST address of", interface.network)
     else:
-        address_split = str(address.ip.exploded).split(":")
-        if COLOR == 1:
-            IP2BIN = "".join(
-                map(str, [(bin(int(x, 16))[2:].zfill(16)) for x in address_split]))
-            COUNT_A = 1
-            ipv6_dict = {}
-            for a in IP2BIN:
-                if 128 - COUNT_A < host_bits:
-                    ipv6_dict[COUNT_A] = {"value": a, "type": "host"}
-                else:
-                    ipv6_dict[COUNT_A] = {"value": a, "type": "net"}
-                COUNT_A += 1
-            COUNT_X = 0
-            for x in address_split:
-                START = 1 + COUNT_X * 16
-                END = 17 + COUNT_X * 16
-                BINARY = ""
-                COUNT_Y = 1
-                for y in range(START, END):
-                    # print(y)
-                    if ipv6_dict[y]['type'] == "host":
-                        BINARY += "[yellow]" + ipv6_dict[y]['value']
-                    else:
-                        BINARY += ipv6_dict[y]['value']
-                    if COUNT_Y == 8:
-                        BINARY += " "
-                    COUNT_Y += 1
-                print(f"                   [cyan bold]{x} =", BINARY)
-                COUNT_X += 1
-        else:
-            for x in address_split:
-                y = (str(bin(int(x, 16)))[2:].zfill(16))
-                print("                  ", x, "=", y[:8], y[8:])
-    print("Network       =", str(address.network).replace("/", " / "))
-    print("Netmask       =", address.netmask)
-    if address.version == 4:
-        print("Broadcast     =", BROADCAST)
-    print("Wildcard Mask =", address.hostmask)
-    if COLOR == 1:
-        print(f"Host Bits     = [yellow]{host_bits}")
-    else:
-        print("Host Bits     =", host_bits)
-    print("Max. Hosts    =", (address.network.num_addresses - MAX_HOSTS_DEDUCT),
-          "  (2^" + str(host_bits) + " - " + str(MAX_HOSTS_DEDUCT) + ")")
-    print("Host Range    =", HOST_RANGE)
-    print("Properties    =")
-    if str(address) == str(address.network):
-        print("   -", address.ip, "is a NETWORK address")
-    elif str(address.ip) == str(BROADCAST):
-        print("   -", address.ip, "is the BROADCAST address of", address.network)
-    else:
-        print("   -", address.ip, "is a HOST address in", address.network)
-
-    if address.version == 4:
-        # Check IPv4 properties
-        # Get subnet class
-        first_octet = int(address_split[0])
+        printer("   -", interface.ip, "is a HOST address in", interface.network)
+    if interface.version == 4:
+        first_octet = int(str(interface.ip).split(".")[0])
         if 1 <= first_octet <= 127:
-            print("   - Class A")
+            printer("   - Class A")
         elif 128 <= first_octet <= 191:
-            print("   - Class B")
+            printer("   - Class B")
         elif 192 <= first_octet <= 223:
-            print("   - Class C")
+            printer("   - Class C")
         elif 224 <= first_octet <= 239:
-            print("   - Class D (Multicast)")
+            printer("   - Class D (Multicast)")
         elif 240 <= first_octet <= 255:
-            print("   - Class E (Reserved)")
-        # Check if subnet is a private subnet
-        if address.is_private:
-            print("   - Private")
+            printer("   - Class E (Reserved)")
+        if interface.is_private:
+            printer("   - Private")
     else:
-        if address.is_site_local:
-            print("   - Site-Local Unicast Properties:")
-        elif address.is_reserved:
-            print("   - Reserved Unicast Properties:")
-        elif address.is_link_local:
-            print("   - Link-Local Unicast Properties:")
-        elif address.is_private:
-            print("   - Private Unicast Properties:")
-        elif address.is_global:
-            print("   - Global Unicast Properties:")
-        print("      + Interface ID =", str(address.ip.exploded)[-19:])
-        print("      + Sol. Node MC = ff02::1:ff" +
-              str(address.ip.exploded)[-7:])
-    if address.is_loopback:
-        print("   - Loopback address")
+        if interface.is_site_local:
+            printer("   - Site-Local Unicast Properties:")
+        elif interface.is_reserved:
+            printer("   - Reserved Unicast Properties:")
+        elif interface.is_link_local:
+            printer("   - Link-Local Unicast Properties:")
+        elif interface.is_private:
+            printer("   - Private Unicast Properties:")
+        elif interface.is_global:
+            printer("   - Global Unicast Properties:")
+        printer("      + Interface ID =", str(interface.ip.exploded)[-19:])
+        printer("      + Sol. Node MC = ff02::1:ff" + str(interface.ip.exploded)[-7:])
+    if interface.is_loopback:
+        printer("   - Loopback address")
+
+def print_dns_hostname(ip: Union[ipaddress.IPv4Address, ipaddress.IPv6Address], do_reverse: bool) -> None:
+    """Perform reverse DNS lookup and print the result."""
+    if do_reverse:
+        try:
+            dns = socket.gethostbyaddr(str(ip))[0]
+        except (socket.error, socket.herror, socket.gaierror, socket.timeout) as e:
+            dns = f"({e.strerror})"
+        printer("DNS Hostname  =", dns)
+
+def main() -> None:
+    """Main function to run the IP Subnet Calculator."""
+    args = parse_args()
+    color = not args.nocolor
+
+    # Override global printer with rich.print if color is enabled.
+    global printer
+    if color:
+        try:
+            from rich import print as rich_print
+            printer = rich_print
+        except ImportError:
+            printer = print
+            printer("WARNING: 'rich' module not found. CLI coloring will not be available.")
+
+    try:
+        interface = ipaddress.ip_interface(args.prefix)
+    except ValueError:
+        printer("ERROR: Bad address " + args.prefix + "!")
+        sys.exit(1)
+
+    prefix_len = interface.network.prefixlen
+
+    if prefix_len in (32, 128):
+        max_hosts_deduct = 0
+        host_range = f"{{ {interface.network[0]} - {interface.network[0]} }}"
+        broadcast = "not needed on Point-to-Point links" if interface.version == 4 else None
+    elif prefix_len in (31, 127):
+        max_hosts_deduct = 0
+        host_range = f"{{ {interface.network[0]} - {interface.network[1]} }}"
+        broadcast = "not needed on Point-to-Point links" if interface.version == 4 else None
+    else:
+        max_hosts_deduct = 2 if interface.version == 4 else 1
+        host_range = f"{{ {interface.network[1]} - {interface.network[-2]} }}"
+        broadcast = interface.network.broadcast_address if interface.version == 4 else None
+
+    if interface.version == 4:
+        print_ipv4_binary(interface.ip, prefix_len, color)
+    else:
+        print_ipv6_binary(interface.ip, prefix_len, color)
+
+    print_network_info(interface, color, max_hosts_deduct, host_range, broadcast)
+    print_properties(interface)
 
     if not args.n:
-        try:
-            dns = socket.gethostbyaddr(str(address.ip))[0]
-        except (socket.error, socket.herror, socket.gaierror, socket.timeout) as e:
-            dns = "(" + e.strerror + ")"
-        print("DNS Hostname  =", dns)
+        print_dns_hostname(interface.ip, do_reverse=True)
+
+if __name__ == '__main__':
+    main()
