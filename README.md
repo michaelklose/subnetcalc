@@ -3,7 +3,7 @@
 > [!IMPORTANT]
 > **Development takes place on Forgejo. GitHub is a read-only mirror.**
 >
-> The primary repository is hosted on [Forgejo](https://git.route4all.com/mikl/subnetcalc).
+> The primary repository is hosted on [Forgejo](https://git.route4all.com/michaelklose/subnetcalc).
 >
 > All development, issues, and pull requests are managed on Forgejo.
 > Please submit contributions and bug reports there.
